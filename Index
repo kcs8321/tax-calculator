@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Minister & Spouse Tax Calculator (2025)</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 650px; margin: auto; }
+    label { font-weight: bold; display: block; margin-top: 12px; }
+    input { width: 100%; padding: 8px; margin-bottom: 8px; }
+    button { padding: 10px 15px; font-size: 1em; margin: 10px 0; }
+    #results { background: #f2f8fc; border-radius: 10px; margin-top: 20px; padding: 15px; }
+  </style>
+</head>
+<body>
+  <h1>2025 Tax & Quarterly Estimated Payments Calculator</h1>
+  
+  <form id="taxForm">
+    <label>Your Salary (ministerial):</label>
+    <input type="number" id="ministerSalary" required>
+
+    <label>Designated Housing Allowance Amount:</label>
+    <input type="number" id="housingAllowance" required>
+
+    <label>Actual Housing Expenses:</label>
+    <input type="number" id="housingExpenses" required>
+
+    <label>Spouse's Salary (State of Illinois):</label>
+    <input type="number" id="spouseSalary" required>
+    
+    <label>Federal Tax Withholding Paid (if any):</label>
+    <input type="number" id="fedWithheld" value="0">
+    
+    <label>State Tax Withholding Paid (if any):</label>
+    <input type="number" id="stateWithheld" value="0">
+
+    <button type="button" onclick="calculateTax()">Calculate Taxes</button>
+  </form>
+
+  <div id="results"></div>
+
+  <script>
+  // 2025 federal tax brackets for married filing jointly
+  const brackets = [
+    { rate: 0.10, upTo: 24000 },
+    { rate: 0.12, upTo: 98150 },
+    { rate: 0.22, upTo: 201050 },
+    { rate: 0.24, upTo: 254200 },
+    { rate: 0.32, upTo: 366200 },
+    { rate: 0.35, upTo: 653350 },
+    { rate: 0.37, upTo: Infinity }
+  ];
+  const STANDARD_DEDUCTION = 31500; // 2025 married filing jointly
+  const ILLINOIS_RATE = 0.0495;
+
+  function calculateFederalTax(taxableIncome) {
+    let tax = 0, lastCap = 0;
+    for (const b of brackets) {
+      if (taxableIncome > b.upTo) {
+        tax += (b.upTo - lastCap) * b.rate;
+        lastCap = b.upTo;
+      } else {
+        tax += (taxableIncome - lastCap) * b.rate;
+        break;
+      }
+    }
+    return Math.round(tax);
+  }
+
+  function calculateTax() {
+    // Inputs
+    const ministerSalary = Number(document.getElementById('ministerSalary').value) || 0;
+    const housingAllowance = Number(document.getElementById('housingAllowance').value) || 0;
+    const housingExpenses = Number(document.getElementById('housingExpenses').value) || 0;
+    const spouseSalary = Number(document.getElementById('spouseSalary').value) || 0;
+    const fedWithheld = Number(document.getElementById('fedWithheld').value) || 0;
+    const stateWithheld = Number(document.getElementById('stateWithheld').value) || 0;
+
+    // Minister housing allowance exclusion (lesser of designated, actual expenses)
+    const housingExclusion = Math.min(housingAllowance, housingExpenses);
+
+    // Federal taxable income (sum salaries minus exclusion and deduction)
+    const grossIncome = ministerSalary + housingAllowance + spouseSalary;
+    const taxableIncome = Math.max((ministerSalary + spouseSalary + housingAllowance - housingExclusion) - STANDARD_DEDUCTION, 0);
+
+    // Federal income tax calculation
+    const fedTax = calculateFederalTax(taxableIncome);
+
+    // Illinois state tax calculation (flat rate, no deduction)
+    const ilTaxable = ministerSalary + spouseSalary + housingAllowance - housingExclusion;
+    const ilTax = Math.round(ilTaxable * ILLINOIS_RATE);
+
+    // Minister SECA (Self-employment) tax (social security + medicare: 15.3% on ministerial income plus housing allowance)
+    const seIncome = ministerSalary + housingAllowance;
+    const secaTax = Math.round(seIncome * 0.153);
+
+    // Total tax owed
+    const totalTax = fedTax + ilTax + secaTax;
+
+    // Payments due after withholding
+    const fedOwed = fedTax + secaTax - fedWithheld;
+    const stateOwed = ilTax - stateWithheld;
+
+    // Quarterly estimated tax calculation
+    const esFed = Math.ceil(fedOwed / 4);
+    const esState = Math.ceil(stateOwed / 4);
+
+    // Output
+    document.getElementById('results').innerHTML =
+      `<b>Federal Tax Owed:</b> $${fedTax}<br>
+       <b>Illinois Tax Owed:</b> $${ilTax}<br>
+       <b>Self-Employment (SECA) Tax:</b> $${secaTax}<br>
+       <b>Total Tax Liability:</b> <b>$${totalTax}</b><br><br>
+       <u>Quarterly Estimated Payments:</u> <br>
+       <b>Federal (with SECA):</b> $${esFed} per quarter <br>
+       <b>Illinois:</b> $${esState} per quarter`;
+  }
+  </script>
+</body>
+</html>
